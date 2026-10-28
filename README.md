@@ -1,201 +1,145 @@
 # Legal Search API 🏛️⚖️
 
+Sistema de alta performance para busca semântica, monitoramento e extração automatizada de publicações jurídicas em Diários de Justiça Eletrônicos (DJE/DJEN) e tribunais estaduais (TJSP).
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.2-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-green?logo=node.js)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?logo=postgresql)](https://www.postgresql.org/)
+[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.11-yellow?logo=elasticsearch)](https://www.elastic.co/)
+[![Redis](https://img.shields.io/badge/Redis-7-red?logo=redis)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://www.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
 ## 🎯 Visão Geral
 
-**Legal Search API** é uma solução completa de busca e monitoramento de publicações jurídicas em Diários de Justiça Eletrônicos (DJE/DJEN), desenvolvida com Node.js, TypeScript e arquitetura escalável.
+A **Legal Search API** é uma solução de engenharia de software voltada para o setor jurídico (LegalTech), construída sobre Node.js e TypeScript com arquitetura orientada a serviços:
+- **Indexação & Busca Semântica:** Elasticsearch 8 para busca contextual em publicações judiciais com lematização brasileira e sinônimos jurídicos.
+- **Processamento Assíncrono:** Filas distribuídas com Bull e Redis para extração e processamento não-bloqueante de Diários Oficiais.
+- **Scraping Resiliente:** Integração Puppeteer para automação em portais de tribunais com controle de concorrência e rotação de headers.
+- **Persistência Relacional:** PostgreSQL gerenciado via TypeORM com migrações versionadas.
+- **Segurança & Controle:** Autenticação híbrida (JWT + API Keys por tiers), rate limiting por IP/token e documentação Swagger/OpenAPI interativa.
 
-## 🚀 Tecnologias
+---
 
-- **Node.js** com TypeScript
-- **Express.js** - Framework web
-- **PostgreSQL** - Banco de dados principal
-- **Redis** - Cache e filas
-- **Elasticsearch** - Busca semântica
-- **Puppeteer** - Web scraping
-- **Bull** - Processamento de filas
-- **JWT** - Autenticação
-- **Docker** - Containerização
+## 🚀 Stack Tecnológica
 
-## 📋 Pré-requisitos
+| Camada | Tecnologia | Propósito |
+| :--- | :--- | :--- |
+| **Runtime & Linguagem** | Node.js 20 LTS + TypeScript 5 | Tipagem estrita e execução assíncrona moderna |
+| **Web Framework** | Express.js 4 + Helmet + CORS | Roteamento, segurança HTTP e compressão |
+| **Banco Relacional** | PostgreSQL 15 + TypeORM | Entidades, relacionamentos e persistência transacional |
+| **Busca Semântica** | Elasticsearch 8.11 | Full-text search, analisadores de morfologia jurídica |
+| **Cache & Filas** | Redis 7 + Bull | Gerenciamento de tarefas em background e throttling |
+| **Web Scraping** | Puppeteer + Cheerio | Extração estruturada de Diários e intimações |
+| **Documentação** | Swagger UI + OpenAPI 3.0 | Especificação interativa de rotas e schemas |
 
-- Node.js 18+
-- Docker e Docker Compose
-- Git
+---
 
-## 🔧 Instalação
+## 🏗️ Estrutura do Projeto
 
-1. Clone o repositório:
+```
+API-TRIBUNAL/
+├── docker/                 # Imagens Docker e scripts de inicialização do PostgreSQL
+├── docker-compose.dev.yml  # Orquestração local completa (Postgres, Redis, Elastic, Kibana)
+├── docker-compose.yml      # Configuração simplificada de serviços
+├── migrations/             # Migrações versionadas de banco de dados
+├── scripts/                # Scripts de monitoramento, teste semântico e setup
+├── src/
+│   ├── config/             # Configurações de banco, cache, Elastic, logger e filas
+│   ├── controllers/        # Controladores REST da API
+│   ├── middlewares/        # Autenticação JWT, validações Joi/Validator, rate limiting
+│   ├── models/             # Entidades TypeORM (User, Search, Monitor, Notification, ApiKey)
+│   ├── queues/             # Workers e processadores de tarefas em fila Bull
+│   ├── routes/             # Definição modular de rotas da aplicação
+│   ├── scrapers/           # Motores de extração especializados (TJSP, DJE, DJEN)
+│   ├── services/           # Regras de negócio, busca semântica e notificações
+│   ├── types/              # Definições de interfaces e tipos estritos
+│   ├── utils/              # Classes utilitárias e tratamento centralizado de erros
+│   └── app.ts              # Ponto de entrada e bootstrap da aplicação
+└── tests/                  # Testes unitários e de integração (Jest + Supertest)
+```
+
+---
+
+## 📡 Endpoints Principais
+
+### Autenticação & Gestão de Acesso
+- `POST /api/auth/register` — Criação de conta de usuário
+- `POST /api/auth/login` — Autenticação e emissão de pares Access/Refresh Tokens
+- `POST /api/auth/refresh` — Rotação segura de tokens JWT
+- `POST /api/auth/logout` — Revogação de sessão e invalidação de refresh token
+
+### Busca Processual & Semântica
+- `POST /api/search` — Disparo de busca tradicional em Diários
+- `GET /api/search/semantic` — Consulta semântica de jurisprudência via Elasticsearch
+- `GET /api/search/suggestions` — Sugestões preditivas de termos e partes
+- `GET /api/search/history` — Histórico paginado de consultas realizadas
+- `GET /api/search/:id` — Consulta detalhada do resultado da busca
+
+### Monitores Contínuos de Publicações
+- `POST /api/monitors` — Cadastro de monitoramento contínuo (por OAB, CPF ou termo)
+- `GET /api/monitors` — Listagem de monitores ativos do usuário
+- `PUT /api/monitors/:id` — Atualização de frequência e parâmetros de alerta
+- `DELETE /api/monitors/:id` — Desativação do monitor
+
+### Métricas & Telemetria
+- `GET /health` — Healthcheck da API e dos serviços dependentes
+- `GET /api-docs` — Swagger UI interativo
+
+---
+
+## 🔧 Como Executar Localmente
+
+### 1. Clonar o Repositório
 ```bash
 git clone https://github.com/funil66/API-TRIBUNAL.git
 cd API-TRIBUNAL
 ```
 
-2. Instale as dependências:
-```bash
-npm install
-```
-
-3. Configure as variáveis de ambiente:
+### 2. Configurar Variáveis de Ambiente
 ```bash
 cp .env.example .env
-# Edite o arquivo .env com suas configurações
+# Ajuste as credenciais conforme seu ambiente
 ```
 
-4. Inicie os serviços com Docker:
+### 3. Subir Serviços Auxiliares via Docker
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.dev.yml up -d postgres redis elasticsearch
 ```
 
-5. Execute as migrações:
+### 4. Instalar Dependências e Executar
 ```bash
-npm run db:migrate
-```
-
-6. Inicie a aplicação:
-```bash
+npm install
 npm run dev
 ```
 
-## 🏗️ Estrutura do Projeto
+A API estará disponível em `http://localhost:3000` e a documentação Swagger em `http://localhost:3000/api-docs`.
 
-```
-src/
-├── config/         # Configurações (database, redis, etc)
-├── controllers/    # Controladores da API
-├── services/       # Lógica de negócio
-├── models/         # Modelos do banco de dados
-├── routes/         # Rotas da API
-├── middlewares/    # Middlewares personalizados
-├── utils/          # Utilitários
-├── types/          # Definições TypeScript
-├── scrapers/       # Web scrapers
-└── queues/         # Processadores de filas
-```
+---
 
-## 📡 API Endpoints
-
-### Autenticação
-- `POST /api/auth/register` - Registro de usuário
-- `POST /api/auth/login` - Login
-- `POST /api/auth/refresh` - Renovar token
-- `POST /api/auth/logout` - Logout
-
-### Busca
-- `POST /api/search` - Realizar busca
-- `GET /api/search/history` - Histórico de buscas
-- `GET /api/search/:id` - Detalhes de uma busca
-- `GET /api/search/semantic` - Busca semântica
-
-### Monitores
-- `GET /api/monitors` - Listar monitores
-- `POST /api/monitors` - Criar monitor
-- `PUT /api/monitors/:id` - Atualizar monitor
-- `DELETE /api/monitors/:id` - Excluir monitor
-
-### Notificações
-- `GET /api/notifications` - Listar notificações
-- `POST /api/notifications/test` - Testar notificação
-- `PUT /api/notifications/:id/read` - Marcar como lida
-
-## 🧪 Testes
+## 🧪 Testes Automatizados
 
 ```bash
-# Executar todos os testes
+# Testes unitários e de integração
 npm test
 
-# Testes com coverage
+# Cobertura de código
 npm run test:coverage
-
-# Testes de integração
-npm run test:integration
-
-# Testes E2E
-npm run test:e2e
 ```
 
-## 🐳 Docker
+---
 
-O projeto inclui um `docker-compose.yml` com:
-- PostgreSQL
-- Redis
-- Elasticsearch
+## 👤 Autor
 
-## 🚀 Deploy
+**Dr. Allisson Gonçalves de Sousa**  
+- Advogado (OAB/SP 390.456) & Engenheiro de Software
+- Portfolio / Site Oficial: [allissonsousa.adv.br](https://allissonsousa.adv.br)
+- GitHub: [@funil66](https://github.com/funil66)
 
-Para deploy em produção:
+---
 
-```bash
-npm run build
-npm start
-```
+## 📄 Licença
 
-## � Licença
-
-Este projeto está sob a licença MIT.
-
-## 👥 Contribuindo
-
-1. Fork o projeto
-2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📞 Contato
-
-GitHub: [@funil66](https://github.com/funil66)
-│   ├── unit
-│   │   └── services
-│   └── integration
-│       └── controllers
-├── .env.example
-├── .gitignore
-├── package.json
-├── tsconfig.json
-├── docker-compose.yml
-└── README.md
-```
-
-## Installation
-1. Clone the repository:
-   ```
-   git clone <repository-url>
-   ```
-2. Navigate to the project directory:
-   ```
-   cd legal-search-api
-   ```
-3. Install dependencies:
-   ```
-   npm install
-   ```
-4. Set up environment variables by copying `.env.example` to `.env` and updating the values as needed.
-
-## Usage
-1. Start the application:
-   ```
-   npm start
-   ```
-2. Access the API at `http://localhost:3000`.
-
-## API Endpoints
-- **Authentication**
-  - `POST /api/auth/login`: User login
-  - `POST /api/auth/register`: User registration
-
-- **Search**
-  - `GET /api/search`: Search for publications by name, CPF, or OAB number
-
-- **Subscription**
-  - `POST /api/subscription`: Create a new subscription
-  - `GET /api/subscription`: Manage subscriptions
-
-- **Admin**
-  - `GET /api/admin/users`: View all users
-  - `GET /api/admin/statistics`: View subscription statistics
-
-## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for any suggestions or improvements.
-
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+Este projeto está licenciado sob a Licença MIT — consulte o arquivo [LICENSE](LICENSE) para mais detalhes.

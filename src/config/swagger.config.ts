@@ -65,7 +65,6 @@ const options: swaggerJsdoc.Options = {
         ## 🔒 Rate Limiting
         
         Headers de resposta incluem informações sobre limites de uso.
-      `
       `,
       contact: {
         name: 'Legal Search Team',

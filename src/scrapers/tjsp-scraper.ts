@@ -1,4 +1,3 @@
-import { Page } from 'puppeteer';
 import { BaseScraper, ScrapedPublication } from './base-scraper';
 import { logger } from '../config/logger.config';
 import { ApiError } from '../utils/api-error';
@@ -123,7 +122,7 @@ export class TjspScraper extends BaseScraper {
    * Fill search form with parameters
    */
   private async fillSearchForm(
-    page: Page, 
+    page: any, 
     params: {
       searchType: 'name' | 'cpf' | 'oab';
       searchTerm: string;
@@ -136,7 +135,7 @@ export class TjspScraper extends BaseScraper {
       
       // Clear and fill search input
       await page.evaluate(() => {
-        const input = document.querySelector('#pesquisaLivre') as HTMLInputElement;
+        const input = (document as any).querySelector('#pesquisaLivre');
         if (input) input.value = '';
       });
       
@@ -147,7 +146,7 @@ export class TjspScraper extends BaseScraper {
         await this.setDateRange(page, params.dateRange);
       }
       
-      // Select search type if needed (some sites have different search modes)
+      // Select search type if needed
       await this.selectSearchType(page, params.searchType);
       
     } catch (error) {
@@ -160,7 +159,7 @@ export class TjspScraper extends BaseScraper {
    * Set date range for search
    */
   private async setDateRange(
-    page: Page, 
+    page: any, 
     dateRange: { start: Date; end: Date }
   ): Promise<void> {
     try {
@@ -172,9 +171,9 @@ export class TjspScraper extends BaseScraper {
       const endDateInput = await page.$('#dtFim');
       
       if (startDateInput && endDateInput) {
-        await page.evaluate((start, end) => {
-          const startInput = document.querySelector('#dtInicio') as HTMLInputElement;
-          const endInput = document.querySelector('#dtFim') as HTMLInputElement;
+        await page.evaluate((start: string, end: string) => {
+          const startInput = (document as any).querySelector('#dtInicio');
+          const endInput = (document as any).querySelector('#dtFim');
           if (startInput) startInput.value = start;
           if (endInput) endInput.value = end;
         }, startDateStr, endDateStr);
@@ -188,12 +187,11 @@ export class TjspScraper extends BaseScraper {
    * Select search type if available
    */
   private async selectSearchType(
-    page: Page, 
+    page: any, 
     searchType: 'name' | 'cpf' | 'oab'
   ): Promise<void> {
     try {
       // Try to find and select appropriate search type
-      // This is site-specific and may need adjustment
       const typeSelector = await page.$('#tipoConsulta');
       if (typeSelector) {
         const value = searchType === 'name' ? 'nome' : 
@@ -208,7 +206,7 @@ export class TjspScraper extends BaseScraper {
   /**
    * Submit search form
    */
-  private async submitSearch(page: Page): Promise<void> {
+  private async submitSearch(page: any): Promise<void> {
     try {
       // Click search button
       await page.click('#botaoPesquisar, .botao-pesquisar, input[type="submit"]');
@@ -216,8 +214,8 @@ export class TjspScraper extends BaseScraper {
       // Wait for results to load
       await page.waitForFunction(
         () => {
-          const loading = document.querySelector('.loading, .carregando');
-          return !loading || window.getComputedStyle(loading).display === 'none';
+          const loading = (document as any).querySelector('.loading, .carregando');
+          return !loading || (window as any).getComputedStyle(loading).display === 'none';
         },
         { timeout: 30000 }
       );
@@ -234,7 +232,7 @@ export class TjspScraper extends BaseScraper {
   /**
    * Extract publications from results page
    */
-  private async extractPublications(page: Page): Promise<ScrapedPublication[]> {
+  private async extractPublications(page: any): Promise<ScrapedPublication[]> {
     try {
       // Wait for results container
       await page.waitForSelector('.resultado, .resultados, .publicacao', { timeout: 10000 });
@@ -242,15 +240,15 @@ export class TjspScraper extends BaseScraper {
       const publications = await page.evaluate(() => {
         const results: any[] = [];
         
-        // Find publication elements (adjust selectors based on actual site structure)
-        const publicationElements = document.querySelectorAll('.publicacao, .resultado-item, .dje-publicacao');
+        // Find publication elements
+        const publicationElements = (document as any).querySelectorAll('.publicacao, .resultado-item, .dje-publicacao');
         
-        publicationElements.forEach((element, index) => {
+        publicationElements.forEach((element: any, index: number) => {
           try {
             const content = element.textContent?.trim() || '';
-            if (content.length < 10) return; // Skip empty or very short content
+            if (content.length < 10) return;
             
-            // Extract date (try different patterns)
+            // Extract date
             const dateText = element.querySelector('.data, .data-publicacao')?.textContent || '';
             let publicationDate = new Date();
             
@@ -265,11 +263,11 @@ export class TjspScraper extends BaseScraper {
               }
             }
             
-            // Extract parties (names in the publication)
+            // Extract parties
             const parties: string[] = [];
             const nameMatches = content.match(/([A-Z][a-z]+ [A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g);
             if (nameMatches) {
-              parties.push(...nameMatches.slice(0, 5)); // Limit to 5 names
+              parties.push(...nameMatches.slice(0, 5));
             }
             
             // Extract process number
@@ -289,25 +287,25 @@ export class TjspScraper extends BaseScraper {
             results.push({
               tribunal: 'TJSP',
               date: publicationDate.toISOString(),
-              content: content.substring(0, 5000), // Limit content size
+              content: content.substring(0, 5000),
               page,
-              url: window.location.href,
+              url: (window as any).location.href,
               processNumber,
-              parties: parties.filter(p => p.length > 5), // Filter short names
+              parties: parties.filter((p: string) => p.length > 5),
               metadata: {
                 extractedAt: new Date().toISOString(),
                 elementIndex: index
               }
             });
           } catch (err) {
-            console.warn('Error extracting publication:', err);
+            // Ignore individual extraction errors
           }
         });
         
         return results;
       });
       
-      return publications.map(pub => ({
+      return publications.map((pub: any) => ({
         ...pub,
         date: new Date(pub.date)
       }));

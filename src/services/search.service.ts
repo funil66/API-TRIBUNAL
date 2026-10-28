@@ -4,7 +4,7 @@ import { logger } from '../config/logger.config';
 import { Search, SearchType, SearchStatus } from '../models/search.entity';
 import { Publication } from '../models/publication.entity';
 import { User } from '../models/user.entity';
-import { TjspScraper } from '../scrapers/tjsp-scraper.fixed';
+import { TjspScraper } from '../scrapers/tjsp-scraper';
 import { ApiError } from '../utils/api-error';
 import { isValidCPF } from '../utils/cpf.validator';
 import { validateOAB } from '../utils/oab.validator';

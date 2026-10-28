@@ -1,12 +1,43 @@
-# IDE Files
-#-------------------------
-/nbproject/
-.idea/*
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
 
-## Sublime Text cache files
-*.tmlanguage.cache
-*.tmPreferences.cache
-*.stTheme.cache
-*.sublime-workspace
+# Build and Transpilation outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+*.secrets
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage and testing
+coverage/
+.nyc_output/
+
+# IDE & OS files
+.vscode/
+.idea/
 *.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
 
+# Temporary and local data
+tmp/
+temp/
+docker/postgres/data/
+docker/redis/data/
+docker/elasticsearch/data/
