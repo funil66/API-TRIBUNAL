@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: legal-search-postgres
+    environment:
+      POSTGRES_DB: legal_search_dev
+      POSTGRES_USER: legal_search_user
+      POSTGRES_PASSWORD: legal_search_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - legal-search-network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: legal-search-redis
+    command: redis-server --appendonly yes --requirepass legal_search_redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - legal-search-network
+    restart: unless-stopped
+
+  # API Application (Development)
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    container_name: legal-search-api
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: legal_search_user
+      DB_PASSWORD: legal_search_password
+      DB_DATABASE: legal_search_dev
+      DB_SYNCHRONIZE: "false"
+      DB_LOGGING: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: legal_search_redis_password
+      REDIS_DB: 0
+      JWT_SECRET: dev_jwt_secret_key_change_in_production
+      JWT_REFRESH_SECRET: dev_jwt_refresh_secret_key_change_in_production
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      LOG_LEVEL: debug
+      LOG_FILE_ENABLED: "true"
+      SWAGGER_ENABLED: "true"
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+    networks:
+      - legal-search-network
+    restart: unless-stopped
+    command: npm run dev
+
+  # Adminer (Database Management)
+  adminer:
+    image: adminer:latest
+    container_name: legal-search-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - legal-search-network
+    restart: unless-stopped
+
+  # Redis Commander (Redis Management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: legal-search-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379:0:legal_search_redis_password
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - legal-search-network
+    restart: unless-stopped
+
+  # Elasticsearch for semantic search
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: legal-search-elasticsearch
+    environment:
+      - node.name=legal-search-es
+      - cluster.name=legal-search-cluster
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - network.host=0.0.0.0
+      - http.port=9200
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - legal-search-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kibana for Elasticsearch visualization (optional)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: legal-search-kibana
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      SERVER_NAME: legal-search-kibana
+      SERVER_HOST: 0.0.0.0
+    ports:
+      - "5601:5601"
+    networks:
+      - legal-search-network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+
+networks:
+  legal-search-network:
+    driver: bridge
